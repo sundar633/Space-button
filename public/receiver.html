@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>Receiver</title></head>
+<body>
+<h1 id="status">Waiting...</h1>
+<button id="listen" onclick="startListening()">Listen</button>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const socket = io();
+
+function startListening() {
+    document.getElementById('status').innerText = 'Listening...';
+    console.log('Listen button clicked');
+}
+
+socket.on('space_pressed', () => {
+    document.getElementById('listen').click();
+    console.log('Space key detected — Listening… started');
+});
+</script>
+</body>
+</html>
