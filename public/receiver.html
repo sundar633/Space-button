@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Receiver Page</title>
+  <title>Live Speech Recognition</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -28,12 +28,12 @@
       background-color: #009f8b;
     }
     #output {
-      font-size: 28px;
+      font-size: 32px;
       margin-top: 30px;
       background-color: rgba(255, 255, 255, 0.2);
-      padding: 20px;
-      border-radius: 10px;
-      width: 60%;
+      padding: 25px;
+      border-radius: 12px;
+      width: 70%;
       margin-left: auto;
       margin-right: auto;
     }
@@ -42,7 +42,7 @@
 <body>
 <h1 id="status">Waiting...</h1>
 <button id="listen" onclick="startListening()">🎤 Start Listening</button>
-<p id="output"></p>
+<p id="output">Say something…</p>
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
@@ -61,10 +61,28 @@ function startSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
     recognition.onresult = (event) => {
-        let transcript = event.results[0][0].transcript;
-        document.getElementById('output').innerText = 'You said: ' + transcript;
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            let transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+
+        document.getElementById('output').innerHTML = `
+            <strong>Live:</strong> ${interimTranscript}<br/>
+            <strong>Final:</strong> ${finalTranscript}
+        `;
     };
+
     recognition.start();
 }
 </script>
