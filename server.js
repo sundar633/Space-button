@@ -1,44 +1,37 @@
 const express = require('express');
 const app = express();
-const fetch = require('node-fetch');
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, { cors: { origin: "*" } });
+const { Configuration, OpenAIApi } = require("openai");
 
 const PORT = process.env.PORT || 3000;
+const OPENAI_API_KEY = "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";
 
-// ✅ Serve static files (receiver.html)
+const openai = new OpenAIApi(new Configuration({ apiKey: OPENAI_API_KEY }));
+
 app.use(express.static('public'));
 app.use(express.json());
 
-// ✅ POST API: Send text to Gemini and get answer
+// ✅ AI Answer Route
 app.post('/ask-ai', async (req, res) => {
-    const question = req.body.question;
-    const apiKey = "AIzaSyBZ4X3hDoNVJe-E07iFQSc8zj3eIiZCWYA";
-
+    const { question } = req.body;
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                "contents": [{ "parts": [{ "text": question }] }]
-            })
+        const completion = await openai.createChatCompletion({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: question }]
         });
-
-        const data = await response.json();
-        const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No answer from Gemini.";
+        const answer = completion.data.choices[0].message.content;
         res.json({ answer });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ answer: "Error fetching answer from Gemini." });
+    } catch (error) {
+        console.error(error.response?.data || error.message);
+        res.status(500).json({ answer: "Error from AI." });
     }
 });
 
-// ✅ Socket.io for space_pressed event
+// ✅ WebSocket Broadcast
 io.on('connection', (socket) => {
-    console.log('✅ Receiver connected');
-    socket.on('space_pressed', () => {
-        io.emit('space_pressed');
-    });
+    console.log("✅ Receiver connected");
+    socket.on('space_pressed', () => io.emit('space_pressed'));
 });
 
 http.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
