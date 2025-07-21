@@ -1,72 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Receiver - Gemini AI</title>
+  <meta charset="UTF-8">
+  <title>Receiver - Voice AI Answer</title>
   <style>
     body {
+      background-color: #121212;
+      color: #ffffff;
       font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #3b8d99, #6b6b83, #aa4b6b);
-      color: white;
-      text-align: center;
       margin: 0;
-      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
     }
-    #answer { font-size: 28px; margin-top: 50px; padding: 20px; width: 80%; margin: auto; background-color: rgba(255,255,255,0.15); border-radius: 12px; }
-    #speech { font-size: 22px; margin-top: 20px; padding: 15px; width: 80%; margin: auto; background-color: rgba(255,255,255,0.1); border-radius: 10px; }
-    #status { font-size: 26px; margin-top: 20px; }
-    #listen { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); padding: 20px 60px; font-size: 30px; background-color: #00c9a7; border: none; color: white; border-radius: 12px; cursor: pointer; }
-    #listen:hover { background-color: #009f8b; }
+    #question {
+      margin-top: 20px;
+      font-size: 24px;
+    }
+    #ai-answer {
+      margin-top: 20px;
+      font-size: 22px;
+      font-weight: bold;
+      color: #00ffcc;
+      max-width: 80%;
+    }
+    #listen-button {
+      margin-top: 40px;
+      font-size: 28px;
+      padding: 15px 30px;
+      background-color: #00ffcc;
+      color: #121212;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-<div id="answer"><b>AI Answer will appear here...</b></div>
-<div id="speech">Your speech will appear here...</div>
-<div id="status">Waiting for space key...</div>
-<button id="listen" onclick="startListening()">🎤 Start Listening</button>
+  <h1>AI Answer Generator</h1>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script>
-const socket = io();
-socket.on('space_pressed', () => document.getElementById('listen').click());
+  <div id="question">Question will appear here...</div>
+  <div id="ai-answer">Answer will appear here...</div>
+  <button id="listen-button">Start Listening</button>
 
-async function startListening() {
-    document.getElementById('status').innerText = 'Listening...';
-    document.getElementById('speech').innerText = '';
-    document.getElementById('answer').innerText = '';
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    const questionDiv = document.getElementById('question');
+    const answerDiv = document.getElementById('ai-answer');
+    const listenButton = document.getElementById('listen-button');
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = true;
-    recognition.continuous = false;
+    let listening = false;
+    let recognition;
+    const socket = io();
 
-    let finalText = '';
-    recognition.onresult = (event) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            const text = event.results[i][0].transcript;
-            if (event.results[i].isFinal) finalText += text + ' ';
-            else interim += text;
-        }
-        document.getElementById('speech').innerHTML = `<b>You said:</b> ${finalText + interim}`;
-    };
+    socket.on('space_pressed', () => {
+      console.log("Space pressed signal received.");
+      startListening();
+    });
 
-    recognition.onend = async () => {
-        if (finalText.trim() !== '') {
-            document.getElementById('status').innerText = 'Thinking…';
-            const res = await fetch('/ask-ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: finalText.trim() }) });
-            const data = await res.json();
-            document.getElementById('answer').innerHTML = `<b>AI Answer:</b> ${data.answer}`;
-            document.getElementById('status').innerText = 'Listening again…';
-            setTimeout(() => startListening(), 2500);
-        } else {
-            document.getElementById('status').innerText = 'No voice detected, restarting…';
-            setTimeout(() => startListening(), 2000);
-        }
-    };
-    recognition.start();
-}
-</script>
+    function startListening() {
+      if (listening) return;
+      listening = true;
+      listenButton.innerText = "Listening...";
+      answerDiv.innerText = "Listening to your voice...";
+      
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const speechResult = event.results[0][0].transcript;
+        questionDiv.innerText = "You asked: " + speechResult;
+        console.log("Captured: ", speechResult);
+        getAIAnswer(speechResult);
+        recognition.stop();
+        listening = false;
+      };
+
+      recognition.onerror = function() {
+        questionDiv.innerText = "Error capturing voice, try again.";
+        listenButton.innerText = "Start Listening";
+        listening = false;
+      };
+    }
+
+    listenButton.onclick = startListening;
+
+    async function getAIAnswer(question) {
+      answerDiv.innerText = "Thinking...";
+      try {
+        const response = await fetch('/ask-ai', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ question })
+        });
+        const data = await response.json();
+        answerDiv.innerText = data.answer;
+        listenButton.innerText = "Start Listening";
+      } catch (err) {
+        answerDiv.innerText = "Error fetching AI answer.";
+        listenButton.innerText = "Start Listening";
+      }
+    }
+  </script>
+
 </body>
 </html>
