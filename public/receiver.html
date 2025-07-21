@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Receiver with Gemini AI Answer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #3b8d99, #6b6b83, #aa4b6b);
+      color: white;
+      text-align: center;
+      margin-top: 5%;
+    }
+    h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    #listen {
+      margin-top: 100px;
+      padding: 20px 50px;
+      font-size: 32px;
+      background-color: #00c9a7;
+      border: none;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #listen:hover {
+      background-color: #009f8b;
+    }
+    #speech, #answer {
+      font-size: 28px;
+      margin-top: 30px;
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 20px;
+      border-radius: 10px;
+      width: 70%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+
+<h1 id="status">Waiting for Space Signal…</h1>
+<button id="listen" onclick="startListening()">🎤 Start Listening</button>
+<p id="speech"></p>
+<p id="answer"></p>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const socket = io();
+
+// ✅ When PC sends space signal, click Listen button
+socket.on('space_pressed', () => {
+    document.getElementById('listen').click();
+});
+
+async function startListening() {
+    document.getElementById('status').innerText = 'Listening...';
+    document.getElementById('speech').innerText = '';
+    document.getElementById('answer').innerText = '';
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    let finalTranscript = '';
+
+    recognition.onresult = (event) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            let text = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += text + ' ';
+            } else {
+                interim += text;
+            }
+        }
+        document.getElementById('speech').innerHTML = `<b>You said:</b> ${finalTranscript + interim}`;
+    };
+
+    recognition.onend = async () => {
+        if (finalTranscript.trim() !== '') {
+            document.getElementById('status').innerText = 'Thinking…';
+            let answer = await getGeminiAnswer(finalTranscript.trim());
+            document.getElementById('answer').innerHTML = `<b>AI Answer:</b> ${answer}`;
+            document.getElementById('status').innerText = 'Listening again…';
+            setTimeout(() => startListening(), 3000);
+        } else {
+            document.getElementById('status').innerText = 'No speech detected, restarting…';
+            setTimeout(() => startListening(), 2000);
+        }
+    };
+
+    recognition.start();
+}
+
+async function getGeminiAnswer(question) {
+    try {
+        let response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBZ4X3hDoNVJe-E07iFQSc8zj3eIiZCWYA", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                "contents": [{"parts": [{"text": question}]}]
+            })
+        });
+        let data = await response.json();
+        let answer = data.candidates?.[0]?.content?.parts?.[0]?.text || "No answer received.";
+        return answer;
+    } catch (e) {
+        console.error(e);
+        return "Error fetching AI answer.";
+    }
+}
+</script>
+</body>
+</html>
