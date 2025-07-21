@@ -1,9 +1,48 @@
 <!DOCTYPE html>
 <html>
-<head><title>Receiver</title></head>
+<head>
+  <title>Receiver Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #3b8d99, #6b6b83, #aa4b6b);
+      color: white;
+      text-align: center;
+      margin-top: 10%;
+    }
+    h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    #listen {
+      padding: 15px 40px;
+      font-size: 24px;
+      background-color: #00c9a7;
+      border: none;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #listen:hover {
+      background-color: #009f8b;
+    }
+    #output {
+      font-size: 28px;
+      margin-top: 30px;
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 20px;
+      border-radius: 10px;
+      width: 60%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
 <body>
 <h1 id="status">Waiting...</h1>
-<button id="listen" onclick="startListening()">Listen</button>
+<button id="listen" onclick="startListening()">🎤 Start Listening</button>
+<p id="output"></p>
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
@@ -11,13 +50,23 @@ const socket = io();
 
 function startListening() {
     document.getElementById('status').innerText = 'Listening...';
-    console.log('Listen button clicked');
+    startSpeech();
 }
 
 socket.on('space_pressed', () => {
     document.getElementById('listen').click();
-    console.log('Space key detected — Listening… started');
 });
+
+function startSpeech() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.onresult = (event) => {
+        let transcript = event.results[0][0].transcript;
+        document.getElementById('output').innerText = 'You said: ' + transcript;
+    };
+    recognition.start();
+}
 </script>
 </body>
 </html>
