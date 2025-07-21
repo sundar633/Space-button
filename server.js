@@ -5,7 +5,7 @@ const io = require('socket.io')(http, { cors: { origin: "*" } });
 const { Configuration, OpenAIApi } = require("openai");
 
 const PORT = process.env.PORT || 3000;
-const OPENAI_API_KEY = "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";
+const OPENAI_API_KEY = "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";
 
 const openai = new OpenAIApi(new Configuration({ apiKey: OPENAI_API_KEY }));
 
